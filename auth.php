@@ -1,88 +1,59 @@
 <?php
 
-return [
+use App\Http\Controllers\Auth\AuthenticatedSessionController;
+use App\Http\Controllers\Auth\ConfirmablePasswordController;
+use App\Http\Controllers\Auth\EmailVerificationNotificationController;
+use App\Http\Controllers\Auth\EmailVerificationPromptController;
+use App\Http\Controllers\Auth\NewPasswordController;
+use App\Http\Controllers\Auth\PasswordController;
+use App\Http\Controllers\Auth\PasswordResetLinkController;
+use App\Http\Controllers\Auth\RegisteredUserController;
+use App\Http\Controllers\Auth\VerifyEmailController;
+use Illuminate\Support\Facades\Route;
 
-    /*
-    |--------------------------------------------------------------------------
-    | Authentication Defaults
-    |--------------------------------------------------------------------------
-    |
-    | This option defines the default authentication "guard" and password
-    | reset "broker" for your application. You may change these values
-    | as required, but they're a perfect start for most applications.
-    |
-    */
+Route::middleware('guest')->group(function () {
+    Route::get('register', [RegisteredUserController::class, 'create'])
+        ->name('register');
 
-    'defaults' => [
-        'guard' => 'web',
-        'passwords' => 'users',
-    ],
+    Route::post('register', [RegisteredUserController::class, 'store']);
 
-    /*
-    |--------------------------------------------------------------------------
-    | Authentication Guards
-    |--------------------------------------------------------------------------
-    |
-    | Next, you may define every authentication guard for your application.
-    | Of course, a great default configuration has been defined for you
-    | which utilizes session storage plus the Eloquent user provider.
-    |
-    | Supported: "session"
-    |
-    */
+    Route::get('login', [AuthenticatedSessionController::class, 'create'])
+        ->name('login');
 
-    'guards' => [
-        'web' => [
-            'driver' => 'session',
-            'provider' => 'users',
-        ],
-    ],
+    Route::post('login', [AuthenticatedSessionController::class, 'store']);
 
-    /*
-    |--------------------------------------------------------------------------
-    | User Providers
-    |--------------------------------------------------------------------------
-    |
-    | This option specifies how users are retrieved from your database.
-    |
-    | Supported: "database", "eloquent"
-    |
-    */
+    Route::get('forgot-password', [PasswordResetLinkController::class, 'create'])
+        ->name('password.request');
 
-    'providers' => [
-        'users' => [
-            'driver' => 'eloquent',
-            'model' => App\Models\User::class,
-        ],
-    ],
+    Route::post('forgot-password', [PasswordResetLinkController::class, 'store'])
+        ->name('password.email');
 
-    /*
-    |--------------------------------------------------------------------------
-    | Resetting Passwords
-    |--------------------------------------------------------------------------
-    |
-    | Defines behavior for Laravel's password reset functionality.
-    |
-    */
+    Route::get('reset-password/{token}', [NewPasswordController::class, 'create'])
+        ->name('password.reset');
 
-    'passwords' => [
-        'users' => [
-            'provider' => 'users',
-            'table' => 'password_reset_tokens',
-            'expire' => 60,
-            'throttle' => 60,
-        ],
-    ],
+    Route::post('reset-password', [NewPasswordController::class, 'store'])
+        ->name('password.store');
+});
 
-    /*
-    |--------------------------------------------------------------------------
-    | Password Confirmation Timeout
-    |--------------------------------------------------------------------------
-    |
-    | The number of seconds before a password confirmation window expires.
-    |
-    */
+Route::middleware('auth')->group(function () {
+    Route::get('verify-email', EmailVerificationPromptController::class)
+        ->name('verification.notice');
 
-    'password_timeout' => 10800,
+    Route::get('verify-email/{id}/{hash}', VerifyEmailController::class)
+        ->middleware(['signed', 'throttle:6,1'])
+        ->name('verification.verify');
 
-];
+    Route::post('email/verification-notification', [EmailVerificationNotificationController::class, 'store'])
+        ->middleware('throttle:6,1')
+        ->name('verification.send');
+
+    Route::get('confirm-password', [ConfirmablePasswordController::class, 'show'])
+        ->name('password.confirm');
+
+    Route::post('confirm-password', [ConfirmablePasswordController::class, 'store']);
+
+    Route::put('password', [PasswordController::class, 'update'])->name('password.update');
+
+    Route::post('logout', [AuthenticatedSessionController::class, 'destroy'])
+        ->name('logout');
+});
